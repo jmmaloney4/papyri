@@ -16,6 +16,7 @@ let package = Package(
     targets: [
         .target(name: "App", dependencies: ["FluentSQLite", "Vapor"]),
         .target(name: "Run", dependencies: ["App"]),
+        .target(name: "CLI", dependencies: ["App", "SwiftCLI"]),
         .testTarget(name: "AppTests", dependencies: ["App"])
     ]
 )
