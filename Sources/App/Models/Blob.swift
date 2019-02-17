@@ -24,6 +24,10 @@ struct Blob: SQLiteModel {
         return hash
     }
     
+    func loadData() throws -> Data {
+        return try Blob.read(hash)
+    }
+    
     static func read(_ hash: SHA256) throws -> Data {
         return try Data(contentsOf: urlForHash(hash))
     }
