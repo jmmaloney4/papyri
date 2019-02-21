@@ -8,14 +8,7 @@ import Foundation
 import Crypto
 import Vapor
 
-public struct SHA256: Codable, Content, CustomStringConvertible, Equatable, ReflectionDecodable {
-    public static func reflectDecoded() throws -> (SHA256, SHA256) {
-        return (
-            try SHA256(withHex: Array(repeating: 0, count: 64).map({"\($0)"}).joined()),
-            try SHA256(withHex: Array(repeating: 1, count: 64).map({"\($0)"}).joined())
-        )
-    }
-    
+public struct SHA256: Codable, Content, CustomStringConvertible, Equatable {
     public internal(set) var bytes: [UInt8]
     
     public init(withData data: Data) {
@@ -38,7 +31,7 @@ public struct SHA256: Codable, Content, CustomStringConvertible, Equatable, Refl
         if str.count != 64 {
             // Fluent needs to init an empty thing. Its dumb.
             // Not sure why this happens or where it is documented.
-            print(str)
+            // print(str)
             self.init(withData: Data())
             return
         }
@@ -66,3 +59,11 @@ fileprivate extension StringProtocol {
     }
 }
 
+extension SHA256: ReflectionDecodable {
+    public static func reflectDecoded() throws -> (SHA256, SHA256) {
+        return (
+            try SHA256(withHex: Array(repeating: 0, count: 64).map({"\($0)"}).joined()),
+            try SHA256(withHex: Array(repeating: 1, count: 64).map({"\($0)"}).joined())
+        )
+    }
+}
