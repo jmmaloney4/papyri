@@ -1,8 +1,7 @@
 import FluentSQLite
 import Vapor
 
-/// A single entry of a Todo list.
-struct Blob: SQLiteModel {
+struct Blob: SQLiteModel, Migration, Content, Parameter {
     var id: Int?
     var hash: SHA256
     lazy var data: Data = try! Blob.read(self.hash)
@@ -51,9 +50,3 @@ struct Blob: SQLiteModel {
         return String(part1)
     }
 }
-
-extension Blob: Migration { }
-
-extension Blob: Content { }
-
-extension Blob: Parameter { }

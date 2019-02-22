@@ -2,6 +2,15 @@
   "object": {
     "pins": [
       {
+        "package": "Conduit",
+        "repositoryURL": "https://github.com/mindbody/Conduit.git",
+        "state": {
+          "branch": null,
+          "revision": "01954fed89dbc5a88d8c6971a2953a6789368b1d",
+          "version": "0.16.0"
+        }
+      },
+      {
         "package": "Console",
         "repositoryURL": "https://github.com/vapor/console.git",
         "state": {
