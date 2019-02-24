@@ -18,7 +18,7 @@ struct BlobController {
         let sha = try SHA256(withHex: req.parameters.next())
         return Blob.query(on: req).filter(\.hash == sha).first().map({ $0! })
             .map({ blob in
-                return HTTPResponse(status: .ok, version: .init(major: 1, minor: 1), headers: .init(), body: try blob.loadData())
+                return HTTPResponse(status: .ok, body: try blob.loadData())
             })
     }
 

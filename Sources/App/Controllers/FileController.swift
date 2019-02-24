@@ -7,7 +7,7 @@
 
 import Foundation
 import Vapor
-import Async
+import Fluent
 
 struct FileController {
     struct FileInfoStruct: Content {
@@ -17,9 +17,7 @@ struct FileController {
     }
     
     static func getAllFiles(_ req: Request) -> Future<[FileInfoStruct]> {
-        let files = File.query(on: req).all()
-        
-        return files.flatMap({ files -> Future<[FileInfoStruct]> in
+        return File.query(on: req).all().flatMap({ files -> Future<[FileInfoStruct]> in
             return files.map({ file -> Future<FileInfoStruct> in
                 Version.find(file.latest, on: req).flatMap({ ver -> Future<FileInfoStruct> in
                     return Blob.find(ver!.blob, on: req).map({ return FileInfoStruct(name: ver!.name, hash: file.hash, size: try $0!.loadData().count) })
@@ -27,16 +25,103 @@ struct FileController {
             }).flatten(on: req)
         })
     }
-    /*
-    static func getFile(_ req: Request) -> HTTPResponse {
-//        req.parameters.next()
+    
+    static func getFile(_ req: Request) throws -> Future<HTTPResponse> {
+        let sha = try SHA256(withHex: req.parameters.next())
+        let file = File.query(on: req).filter(\.hash == sha).first()
+        let blob = file.map({ $0!.latest }).flatMap{ Version.find($0, on: req) }.flatMap({ Blob.find($0!.blob, on: req) })
+        return blob.map({ HTTPResponse(status: .ok, body: try $0!.loadData()) })
     }
- 
-    static func createFile(_ req: Request) -> Future<FileInfoStruct> {
+    
+    struct CreateFileStruct: Content {
+        var blob: SHA256
+        var name: String
+    }
+    
+    static func createFile(_ req: Request) throws -> Future<Response> /* FileInfoStruct */ {
+        return try req.content.decode(CreateFileStruct.self)
+            .flatMap({ body -> Future<Response> in
+                
+                return Blob
+                    .query(on: req)
+                    .filter(\.hash == body.blob)
+                    .first()
+                    .flatMap({ blob -> Future<Response> in
+                        
+                        return Version(id: nil, name: body.name, blob: blob!.id!, previous: nil)
+                            .save(on: req)
+                            .flatMap({ ver -> Future<Response> in
+                                
+                                return File(id: nil, hash: blob!.hash, latest: ver.id!)
+                                    .save(on: req)
+                                    .flatMap { file -> Future<Response> in
+                                        
+                                        return FileInfoStruct(name: body.name, hash: body.blob, size: try blob!.loadData().count)
+                                            .encode(status: HTTPStatus.created, for: req)
+                                }
+                            })
+                    })
+            })
+    }
+    
+    struct UpdateFileStruct: Content {
+        var blob: SHA256
+        var name: String?
+    }
+    
+    static func updateFile(_ req: Request) throws -> Future<Response> /* FileInfoStruct */ {
+        let sha = try SHA256(withHex: req.parameters.next())
+        var file = File.query(on: req).filter(\.hash == sha).first()
         
+        return try req.content.decode(UpdateFileStruct.self)
+            .flatMap({ body -> EventLoopFuture<Response> in
+                
+                // Either get filename from previous revision, or use provided name.
+                var name: Future<String>
+                if body.name == nil {
+                    name = file.map({ $0?.latest }).flatMap {
+                        Version.find($0!, on: req).map {
+                            return $0!.name
+                        }
+                    }
+                } else {
+                    let promise = req.eventLoop.newPromise(of: String.self)
+                    promise.succeed(result: body.name!)
+                    name = promise.futureResult
+                }
+                
+                // Find the blob
+                return Blob
+                    .query(on: req)
+                    .filter(\.hash == body.blob)
+                    .first()
+                    
+                    // Create a new Version
+                    .and(name)
+                    .and(file)
+                    .flatMap({ (arg0, file) -> EventLoopFuture<Response> in
+                        let (blob, name) = arg0
+                        
+                        return Version(id: nil, name: name, blob: blob!.id!, previous: nil)
+                            .save(on: req)
+                            .flatMap({ ver -> Future<Response> in
+                                
+                                // Save the new file
+                                var newFile = file!
+                                newFile.latest = ver.id!
+                                return newFile.save(on: req).flatMap({ _ in
+                                    FileInfoStruct(name: ver.name, hash: newFile.hash, size: try blob!.loadData().count)
+                                        .encode(status: HTTPStatus.ok, for: req)
+                                })
+                            })
+                    })
+                
+            })
     }
-    */
+    
     static func addRoutes(_ router: Router) {
-        router.get("files", use: FileController.getAllFiles)
+        router.get("file", use: FileController.getAllFiles)
+        router.get("file", String.parameter, use: FileController.getFile)
+        router.post("file", use: FileController.createFile)
     }
 }
