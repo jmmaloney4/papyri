@@ -22,9 +22,14 @@ struct BlobController {
             })
     }
 
-    static func postBlob(_ req: Request) throws -> HTTPStatus {
-        _ = try Blob(withData: req.http.body.data!).save(on: req)
-        return HTTPStatus.created
+    struct BlobInfoStruct: Content {
+        var hash: SHA256
+    }
+    
+    static func postBlob(_ req: Request) throws -> Future<Response> {
+        let blob = try Blob(withData: req.http.body.data!).save(on: req)
+        let info = blob.map({ BlobInfoStruct(hash: $0.hash) })
+        return info.encode(status: .created, for: req)
     }
     
     static func addRoutes(_ router: Router) {

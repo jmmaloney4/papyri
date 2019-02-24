@@ -19,7 +19,7 @@ struct Blob: SQLiteModel, Migration, Content, Parameter {
         } catch {
             print(error)
         }
-    
+        
         return hash
     }
     
