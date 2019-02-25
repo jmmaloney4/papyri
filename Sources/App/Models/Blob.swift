@@ -1,7 +1,7 @@
 import FluentSQLite
 import Vapor
 
-struct Blob: SQLiteModel, Migration, Content, Parameter {
+struct Blob: SQLiteModel, Migration, Parameter {
     var id: Int?
     var hash: SHA256
     lazy var data: Data = try! Blob.read(self.hash)
@@ -13,7 +13,6 @@ struct Blob: SQLiteModel, Migration, Content, Parameter {
     static func write(_ data: Data) throws -> SHA256 {
         let hash = SHA256(withData: data)
         try FileManager.default.createDirectory(atPath: "/Users/jack/.papyri/obj/\(getDBPrefixDirPath(hash))", withIntermediateDirectories: true)
-        print(String(data: data, encoding: .utf8)!)
         do {
         try data.write(to: urlForHash(hash))
         } catch {

@@ -123,5 +123,6 @@ struct FileController {
         router.get("file", use: FileController.getAllFiles)
         router.get("file", String.parameter, use: FileController.getFile)
         router.post("file", use: FileController.createFile)
+        router.post("file", String.parameter, use: FileController.updateFile)
     }
 }

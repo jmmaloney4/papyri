@@ -7,8 +7,9 @@
 
 import Foundation
 import FluentSQLite
+import Vapor
 
-struct Tree: SQLiteModel {
+struct Tree: SQLiteModel, Migration, Parameter {
     var id: Int?
     
     var files: [File]

@@ -14,4 +14,5 @@ public func routes(_ router: Router) throws {
     }
     
     BlobController.addRoutes(router)
+    FileController.addRoutes(router)
 }

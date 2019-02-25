@@ -9,13 +9,13 @@ import Foundation
 import FluentSQLite
 import Vapor
 
-struct File: SQLiteModel, Migration, Content, Parameter {
+struct File: SQLiteModel, Migration, Parameter {
     var id: Int?
     var hash: SHA256
     var latest: Version.ID
 }
 
-struct Version: SQLiteModel, Migration, Content, Parameter {
+struct Version: SQLiteModel, Migration, Parameter {
     var id: Int?
     var name: String
     var blob: Blob.ID

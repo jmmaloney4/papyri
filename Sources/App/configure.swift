@@ -28,5 +28,8 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
     // Configure migrations
     var migrations = MigrationConfig()
     migrations.add(model: Blob.self, database: .sqlite)
+    migrations.add(model: Version.self, database: .sqlite)
+    migrations.add(model: File.self, database: .sqlite)
+    migrations.add(model: Tree.self, database: .sqlite)
     services.register(migrations)
 }
