@@ -2,12 +2,12 @@
   "object": {
     "pins": [
       {
-        "package": "Conduit",
-        "repositoryURL": "https://github.com/mindbody/Conduit.git",
+        "package": "Alamofire",
+        "repositoryURL": "https://github.com/Alamofire/Alamofire.git",
         "state": {
           "branch": null,
-          "revision": "01954fed89dbc5a88d8c6971a2953a6789368b1d",
-          "version": "0.16.0"
+          "revision": "d82c7943d80785834da4693b92133012626c060b",
+          "version": "4.8.1"
         }
       },
       {
