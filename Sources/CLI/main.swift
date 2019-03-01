@@ -2,43 +2,47 @@ import Vapor
 import SwiftCLI
 import Alamofire
 import Dispatch
+import App
+import Content
 
-// let mySessionClient = URLSessionClient(sessionConfiguration: URLSessionConfiguration.ephemeral, delegateQueue: OperationQueue())
-/*
- let requestBuilder = HTTPRequestBuilder(url: URL(string: "http://localhost:8080/")!)
- requestBuilder.method = .GET
- let req = try requestBuilder.build()
- 
- mySessionClient.begin(request: req) { (data, res, err) in
- print(String(data: data!, encoding: .utf8)!)
- }
- 
- sleep(100)
- 
- */
 class ImportCommand: SwiftCLI.Command {
     let name = "import"
     let path = Parameter()
     
     func execute() throws {
-        // let data = try Data(contentsOf: URL(fileURLWithPath: path.value))
-        print("hola")
+        let queue = DispatchQueue(label: "Request Callbacks")
         let sem = DispatchSemaphore(value: 0)
-        Alamofire.upload(URL(fileURLWithPath: "/Users/jack/Developer/papyri/poem.txt"), to: "http://localhost:8080/blob", method: .post)
+        
+        var blobRes: DataResponse<Any>?
+        var fileRes: DataResponse<Any>?
+        
+        let url = URL(fileURLWithPath: path.value)
+        let blobEndpoint = URL(string: "http://localhost:8080/blob")!
+        let fileEndpoint = URL(string: "http://localhost:8080/file")!
+        
+        Alamofire.upload(url, to: blobEndpoint, method: .post)
             .validate()
-            .responseJSON { res in
-                print(res.error!)
-                print(String(data: res.data!, encoding: .utf8)!)
-                print("Hello, \(res)")
+            .responseJSON(queue: queue) { res in
+                blobRes = res
                 sem.signal()
             }
-        
         sem.wait()
+        let blobJson = try JSONDecoder().decode(BlobInfoStruct.self, from: blobRes!.data!)
         
+        let reqJson = CreateFileStruct(name: url.lastPathComponent, blob: blobJson.hash)
+        Alamofire.request(fileEndpoint, method: HTTPMethod.post, parameters: try reqJson.asParameters(), encoding: JSONEncoding.default, headers: nil)
+            .validate()
+            .responseJSON(queue: queue) { res in
+                fileRes = res
+                sem.signal()
+            }
+        sem.wait()
+        let fileJson = try JSONDecoder().decode(FileInfoStruct.self, from: fileRes!.data!)
         
+        print("\(fileJson.hash)    \(fileJson.size)    \(fileJson.name)")
     }
 }
 
-let myCli = CLI(name: "greeter", version: "1.0.0", description: "Greeter - your own personal greeter")
+let myCli = CLI(name: "papyri", version: "0.0.1")
 myCli.commands = [ ImportCommand() ]
 myCli.goAndExit()

@@ -9,7 +9,7 @@ import Crypto
 import Vapor
 
 public struct SHA256: Codable, Content, CustomStringConvertible, Equatable {
-    public internal(set) var bytes: [UInt8]
+    public fileprivate(set) var bytes: [UInt8]
     
     public init(withData data: Data) {
         guard let digest = try? Crypto.SHA256.hash(data) else {

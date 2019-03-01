@@ -1,5 +1,6 @@
 import FluentSQLite
 import Vapor
+import Content
 
 struct Blob: SQLiteModel, Migration, Parameter {
     var id: Int?

@@ -8,14 +8,9 @@
 import Foundation
 import Vapor
 import Fluent
+import Content
 
-struct FileController {
-    struct FileInfoStruct: Content {
-        var name: String
-        var hash: SHA256
-        var size: Int
-    }
-    
+public struct FileController {
     static func getAllFiles(_ req: Request) -> Future<[FileInfoStruct]> {
         return File.query(on: req).all().flatMap({ files -> Future<[FileInfoStruct]> in
             return files.map({ file -> Future<FileInfoStruct> in
@@ -31,11 +26,6 @@ struct FileController {
         let file = File.query(on: req).filter(\.hash == sha).first()
         let blob = file.map({ $0!.latest }).flatMap{ Version.find($0, on: req) }.flatMap({ Blob.find($0!.blob, on: req) })
         return blob.map({ HTTPResponse(status: .ok, body: try $0!.loadData()) })
-    }
-    
-    struct CreateFileStruct: Content {
-        var blob: SHA256
-        var name: String
     }
     
     static func createFile(_ req: Request) throws -> Future<Response> /* FileInfoStruct */ {
@@ -62,11 +52,6 @@ struct FileController {
                             })
                     })
             })
-    }
-    
-    struct UpdateFileStruct: Content {
-        var blob: SHA256
-        var name: String?
     }
     
     static func updateFile(_ req: Request) throws -> Future<Response> /* FileInfoStruct */ {

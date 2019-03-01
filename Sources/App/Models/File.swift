@@ -8,6 +8,7 @@
 import Foundation
 import FluentSQLite
 import Vapor
+import Content
 
 struct File: SQLiteModel, Migration, Parameter {
     var id: Int?

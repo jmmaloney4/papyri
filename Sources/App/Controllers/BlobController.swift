@@ -8,6 +8,7 @@
 import Foundation
 import Fluent
 import Vapor
+import Content
 
 struct BlobController {
     static func getAllBlobHashes(_ req: Request) -> Future<[SHA256]> {
@@ -20,10 +21,6 @@ struct BlobController {
             .map({ blob in
                 return HTTPResponse(status: .ok, body: try blob.loadData())
             })
-    }
-
-    struct BlobInfoStruct: Content {
-        var hash: SHA256
     }
     
     static func postBlob(_ req: Request) throws -> Future<Response> {
