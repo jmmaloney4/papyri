@@ -19,7 +19,7 @@ extension FileInfoStruct: TextTableRepresentable {
 class ImportCommand: SwiftCLI.Command {
     let name = "import"
     let paths = CollectedParameter()
-    let json = Flag("--json", description: "Print the resultant file as JSON.", defaultValue: false)
+    let json = Flag("-j", "--json", description: "Print the resultant file as JSON.", defaultValue: false)
     
     func execute() throws {
         print("\(paths.value)")
@@ -40,7 +40,6 @@ class ImportCommand: SwiftCLI.Command {
         var blobRes: DataResponse<Any>?
         var fileRes: DataResponse<Any>?
         
-        //let url = URL(fileURLWithPath: path.value)
         let blobEndpoint = URL(string: "http://localhost:8080/blob")!
         let fileEndpoint = URL(string: "http://localhost:8080/file")!
         
@@ -59,8 +58,6 @@ class ImportCommand: SwiftCLI.Command {
             fatalError()
         }
         let reqJson = CreateFileStruct(name: path.lastPathComponent, blob: blobJson.hash)
-
-        print("\(try reqJson.asParameters())")
         
         Alamofire.request(fileEndpoint, method: HTTPMethod.post, parameters: try reqJson.asParameters(), encoding: JSONEncoding.default, headers: nil)
             .validate()
@@ -74,6 +71,33 @@ class ImportCommand: SwiftCLI.Command {
     }
 }
 
+class ListCommand: SwiftCLI.Command {
+    var name: String = "list"
+    
+    func execute() throws {
+        let files = try getAllFiles()
+        print(files.renderTextTable())
+    }
+    
+    func getAllFiles() throws -> [FileInfoStruct] {
+        let queue = DispatchQueue(label: "Request Callbacks")
+        let sem = DispatchSemaphore(value: 0)
+        
+        let fileEndpoint = URL(string: "http://localhost:8080/file")!
+        
+        var response: DataResponse<Any>?
+        
+        Alamofire.request(fileEndpoint).validate().responseJSON(queue: queue) { res in
+            response = res
+            sem.signal()
+        }
+        sem.wait()
+        
+        return try JSONDecoder().decode([FileInfoStruct].self, from: response!.data!)
+    }
+    
+}
+
 let myCli = CLI(name: "papyri", version: "0.0.1")
-myCli.commands = [ ImportCommand() ]
+myCli.commands = [ ImportCommand(), ListCommand() ]
 myCli.goAndExit()
