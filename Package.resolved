@@ -164,6 +164,15 @@
         }
       },
       {
+        "package": "SwiftyTextTable",
+        "repositoryURL": "https://github.com/scottrhoyt/SwiftyTextTable.git",
+        "state": {
+          "branch": null,
+          "revision": "7b8661865f0d9590a4b7c146237fecd99f3d8406",
+          "version": "0.8.2"
+        }
+      },
+      {
         "package": "TemplateKit",
         "repositoryURL": "https://github.com/vapor/template-kit.git",
         "state": {

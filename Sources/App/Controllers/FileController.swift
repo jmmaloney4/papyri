@@ -56,7 +56,7 @@ public struct FileController {
     
     static func updateFile(_ req: Request) throws -> Future<Response> /* FileInfoStruct */ {
         let sha = try SHA256(withHex: req.parameters.next())
-        var file = File.query(on: req).filter(\.hash == sha).first()
+        let file = File.query(on: req).filter(\.hash == sha).first()
         
         return try req.content.decode(UpdateFileStruct.self)
             .flatMap({ body -> EventLoopFuture<Response> in
