@@ -51,3 +51,15 @@ public struct UpdateFileStruct: Content {
         self.blob = blob
     }
 }
+
+public struct VersionInfoStruct: Content {
+    public var name: String
+    public var blob: SHA256
+    public var size: Int
+    
+    public init(name: String, blob: SHA256, size: Int) {
+        self.name = name
+        self.blob = blob
+        self.size = size
+    }
+}

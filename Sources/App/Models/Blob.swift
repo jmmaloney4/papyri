@@ -7,6 +7,8 @@ struct Blob: SQLiteModel, Migration, Parameter {
     var hash: SHA256
     lazy var data: Data = try! Blob.read(self.hash)
     
+    var size: Int { return try! self.loadData().count }
+    
     init(withData data: Data) throws {
         self.hash = try Blob.write(data)
     }

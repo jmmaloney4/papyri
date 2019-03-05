@@ -104,10 +104,41 @@ public struct FileController {
             })
     }
     
+    static func getAllVersions(_ req: Request) throws -> Future<[VersionInfoStruct]> {
+        let sha = try SHA256(withHex: req.parameters.next())
+        let file = File.query(on: req).filter(\.hash == sha).first()
+        
+        return file.flatMap {
+            return Version.find($0!.latest, on: req).flatMap {
+                return getNextVersion($0!.id!, on: req, current: [])
+            }
+        }
+    }
+    
+    static func getNextVersion(_ previous: Version.ID, on req: Request, current: [Future<VersionInfoStruct>]) -> Future<[VersionInfoStruct]> {
+        let version = Version.find(previous, on: req)
+        return version.flatMap { ver -> Future<[VersionInfoStruct]> in
+            let info = Blob.find(ver!.blob, on: req).map { blob -> VersionInfoStruct in
+                return VersionInfoStruct(name: ver!.name, blob: blob!.hash, size: blob!.size)
+            }
+            
+            var rv = current
+            rv.append(info)
+            
+            if ver!.previous != nil {
+                return getNextVersion(ver!.previous!, on: req, current: rv)
+            } else {
+                return rv.flatten(on: req)
+            }
+        }
+    }
+    
     static func addRoutes(_ router: Router) {
         router.get("file", use: FileController.getAllFiles)
         router.get("file", String.parameter, use: FileController.getFile)
         router.post("file", use: FileController.createFile)
         router.post("file", String.parameter, use: FileController.updateFile)
+        
+        router.post("file", String.parameter, "version", use: FileController.getAllVersions)
     }
 }
