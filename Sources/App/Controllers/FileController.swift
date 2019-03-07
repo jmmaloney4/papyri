@@ -87,7 +87,7 @@ public struct FileController {
                     .flatMap({ (arg0, file) -> EventLoopFuture<Response> in
                         let (blob, name) = arg0
                         
-                        return Version(id: nil, name: name, blob: blob!.id!, previous: nil)
+                        return Version(id: nil, name: name, blob: blob!.id!, previous: file!.latest)
                             .save(on: req)
                             .flatMap({ ver -> Future<Response> in
                                 
@@ -100,7 +100,6 @@ public struct FileController {
                                 })
                             })
                     })
-                
             })
     }
     
@@ -139,6 +138,6 @@ public struct FileController {
         router.post("file", use: FileController.createFile)
         router.post("file", String.parameter, use: FileController.updateFile)
         
-        router.post("file", String.parameter, "version", use: FileController.getAllVersions)
+        router.get ("file", String.parameter, "version", use: FileController.getAllVersions)
     }
 }
