@@ -21,4 +21,5 @@ struct Version: SQLiteModel, Migration, Parameter {
     var name: String
     var blob: Blob.ID
     var previous: Version.ID?
+    var date: Date
 }

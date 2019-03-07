@@ -56,10 +56,12 @@ public struct VersionInfoStruct: Content {
     public var name: String
     public var blob: SHA256
     public var size: Int
+    public var date: Date
     
-    public init(name: String, blob: SHA256, size: Int) {
+    public init(name: String, blob: SHA256, size: Int, date: Date) {
         self.name = name
         self.blob = blob
         self.size = size
+        self.date = date
     }
 }

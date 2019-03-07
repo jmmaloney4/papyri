@@ -101,18 +101,19 @@ class UpdateCommand: SwiftCLI.Command {
         let blob = try ImportCommand.uploadBlob(path: url)
         let request = UpdateFileStruct(name: url.lastPathComponent, blob: blob.hash)
         
-        let fileEndpoint = URL(string: "http://localhost:8080/file")!
-        var response: DataResponse<Any>?
+        let fileEndpoint = URL(string: "http://localhost:8080/file/\(sha)")!
+        // var response: DataResponse<Any>?
         
         Alamofire.request(fileEndpoint, method: HTTPMethod.post, parameters: try request.asParameters(), encoding: JSONEncoding.default, headers: nil)
             .validate()
             .responseJSON(queue: queue) { res in
-                response = res
+                // response = res
                 sem.signal()
         }
         sem.wait()
         
-        let file = try JSONDecoder().decode(FileInfoStruct.self, from: response!.data!)
+        // let file = try JSONDecoder().decode(FileInfoStruct.self, from: response!.data!)
+        print("\(blob.hash)")
     }
 }
 
@@ -140,9 +141,17 @@ class ListCommand: SwiftCLI.Command {
         
         return try JSONDecoder().decode([FileInfoStruct].self, from: response!.data!)
     }
+}
+
+class LogCommand: SwiftCLI.Command {
+    var name: String = "log"
+    var hash = Parameter()
     
+    func execute() throws {
+        
+    }
 }
 
 let myCli = CLI(name: "papyri", version: "0.0.1")
-myCli.commands = [ ImportCommand(), ListCommand() ]
+myCli.commands = [ ImportCommand(), ListCommand(), UpdateCommand() ]
 myCli.goAndExit()

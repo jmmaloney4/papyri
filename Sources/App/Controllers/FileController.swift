@@ -38,7 +38,7 @@ public struct FileController {
                     .first()
                     .flatMap({ blob -> Future<Response> in
                         
-                        return Version(id: nil, name: body.name, blob: blob!.id!, previous: nil)
+                        return Version(id: nil, name: body.name, blob: blob!.id!, previous: nil, date: Date())
                             .save(on: req)
                             .flatMap({ ver -> Future<Response> in
                                 
@@ -87,14 +87,14 @@ public struct FileController {
                     .flatMap({ (arg0, file) -> EventLoopFuture<Response> in
                         let (blob, name) = arg0
                         
-                        return Version(id: nil, name: name, blob: blob!.id!, previous: file!.latest)
+                        return Version(id: nil, name: name, blob: blob!.id!, previous: file!.latest, date: Date())
                             .save(on: req)
                             .flatMap({ ver -> Future<Response> in
                                 
                                 // Save the new file
                                 var newFile = file!
                                 newFile.latest = ver.id!
-                                return newFile.save(on: req).flatMap({ _ in
+                                return newFile.update(on: req).flatMap({ _ in
                                     FileInfoStruct(name: ver.name, hash: newFile.hash, size: try blob!.loadData().count)
                                         .encode(status: HTTPStatus.ok, for: req)
                                 })
@@ -118,7 +118,7 @@ public struct FileController {
         let version = Version.find(previous, on: req)
         return version.flatMap { ver -> Future<[VersionInfoStruct]> in
             let info = Blob.find(ver!.blob, on: req).map { blob -> VersionInfoStruct in
-                return VersionInfoStruct(name: ver!.name, blob: blob!.hash, size: blob!.size)
+                return VersionInfoStruct(name: ver!.name, blob: blob!.hash, size: blob!.size, date: ver!.date)
             }
             
             var rv = current
