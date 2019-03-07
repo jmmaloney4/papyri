@@ -23,3 +23,8 @@ struct Version: SQLiteModel, Migration, Parameter {
     var previous: Version.ID?
     var date: Date
 }
+
+struct CodableDateWrapper: Codable {
+    var value: Date
+    
+}

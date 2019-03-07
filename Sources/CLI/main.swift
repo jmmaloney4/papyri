@@ -16,6 +16,17 @@ extension FileInfoStruct: TextTableRepresentable {
     }
 }
 
+extension VersionInfoStruct: TextTableRepresentable {
+    public static var columnHeaders: [String] {
+        return ["blob", "size", "name", "date"]
+    }
+    
+    public var tableValues: [CustomStringConvertible] {
+        return [self.blob.description, ByteCountFormatter.string(fromByteCount: Int64(self.size), countStyle: .memory), self.name, self.date]
+    }
+}
+
+
 class ImportCommand: SwiftCLI.Command {
     let name = "import"
     let path = Parameter()
@@ -102,17 +113,14 @@ class UpdateCommand: SwiftCLI.Command {
         let request = UpdateFileStruct(name: url.lastPathComponent, blob: blob.hash)
         
         let fileEndpoint = URL(string: "http://localhost:8080/file/\(sha)")!
-        // var response: DataResponse<Any>?
         
         Alamofire.request(fileEndpoint, method: HTTPMethod.post, parameters: try request.asParameters(), encoding: JSONEncoding.default, headers: nil)
             .validate()
             .responseJSON(queue: queue) { res in
-                // response = res
                 sem.signal()
         }
         sem.wait()
         
-        // let file = try JSONDecoder().decode(FileInfoStruct.self, from: response!.data!)
         print("\(blob.hash)")
     }
 }
@@ -148,10 +156,38 @@ class LogCommand: SwiftCLI.Command {
     var hash = Parameter()
     
     func execute() throws {
+        let sha = try SHA256(withHex: hash.value)
         
+        let queue = DispatchQueue(label: "Request Callbacks")
+        let sem = DispatchSemaphore(value: 0)
+        
+        let endpoint = URL(string: "http://localhost:8080/file/\(sha)/version")!
+     
+        var response: DataResponse<Any>?
+        
+        Alamofire.request(endpoint)
+            .validate()
+            .responseJSON(queue: queue) { res in
+                response = res
+                sem.signal()
+        }
+        sem.wait()
+        
+        print(String(data: response!.data!, encoding: .utf8)!)
+        
+        let decoder = JSONDecoder()
+        if #available(OSX 10.12, *) {
+            decoder.dateDecodingStrategy = .iso8601
+        } else {
+            // Fallback on earlier versions
+            fatalError()
+        }
+        let versions = try decoder.decode([VersionInfoStruct].self, from: response!.data!)
+        
+        print(versions.renderTextTable())
     }
 }
 
 let myCli = CLI(name: "papyri", version: "0.0.1")
-myCli.commands = [ ImportCommand(), ListCommand(), UpdateCommand() ]
+myCli.commands = [ ImportCommand(), ListCommand(), UpdateCommand(), LogCommand() ]
 myCli.goAndExit()
