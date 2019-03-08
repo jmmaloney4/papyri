@@ -15,7 +15,7 @@ public struct FileController {
         return File.query(on: req).all().flatMap({ files -> Future<[FileInfoStruct]> in
             return files.map({ file -> Future<FileInfoStruct> in
                 Version.find(file.latest, on: req).flatMap({ ver -> Future<FileInfoStruct> in
-                    return Blob.find(ver!.blob, on: req).map({ return FileInfoStruct(name: ver!.name, hash: file.hash, size: try $0!.loadData().count) })
+                    return Blob.find(ver!.blob, on: req).map({ return FileInfoStruct(name: ver!.name, hash: file.hash, size: $0!.size) })
                 })
             }).flatten(on: req)
         })
@@ -42,7 +42,7 @@ public struct FileController {
                                     .save(on: req)
                                     .flatMap { file -> Future<Response> in
                                         
-                                        return FileInfoStruct(name: body.name, hash: body.blob, size: try blob.loadData().count)
+                                        return FileInfoStruct(name: body.name, hash: body.blob, size: blob.size)
                                             .encode(status: HTTPStatus.created, for: req)
                                 }
                             })
@@ -73,7 +73,7 @@ public struct FileController {
                                 var newFile = file!
                                 newFile.latest = ver.id!
                                 return newFile.update(on: req).flatMap({ _ in
-                                    FileInfoStruct(name: ver.name, hash: newFile.hash, size: try blob.loadData().count)
+                                    FileInfoStruct(name: ver.name, hash: newFile.hash, size: blob.size)
                                         .encode(status: HTTPStatus.ok, for: req)
                                 })
                         })
