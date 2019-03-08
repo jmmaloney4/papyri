@@ -16,10 +16,13 @@ let package = Package(
     ],
     targets: [
         .target(name: "Content", dependencies: ["Vapor"]),
-        .target(name: "App", dependencies: ["Content", "FluentSQLite", "Vapor"]),
-        .target(name: "Run", dependencies: ["App"]),
-        .target(name: "CLI", dependencies: ["App", "SwiftCLI", "Alamofire", "SwiftyTextTable"]),
-        .testTarget(name: "AppTests", dependencies: ["App"])
+        .target(name: "Client", dependencies: ["Content", "Alamofire"]),
+
+        .target(name: "CLI", dependencies: ["Content", "SwiftCLI", "Alamofire", "SwiftyTextTable", "Client"]),
+
+        .target(name: "Server", dependencies: ["Content", "FluentSQLite", "Vapor"]),
+        .target(name: "Run", dependencies: ["Server"]),
+        .testTarget(name: "AppTests", dependencies: ["Server"])
     ]
 )
 

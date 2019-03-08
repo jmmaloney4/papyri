@@ -1,3 +1,3 @@
-import App
+import Server
 
 try app(.detect()).run()
