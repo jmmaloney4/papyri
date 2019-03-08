@@ -51,4 +51,21 @@ struct Blob: SQLiteModel, Migration, Parameter {
         let part1 = hex.prefix(upTo: splitIndex)
         return String(part1)
     }
+    
+    static func find(hash: SHA256, on db: DatabaseConnectable) -> Future<Blob> {
+        let rv = Blob
+            .query(on: db)
+            .filter(\.hash == hash)
+        let count = rv.count().map({
+            switch $0 {
+            case 0: throw PYError.blobDoesNotExist
+            case 1: break;
+            default: fatalError()
+            }
+        })
+        
+        return rv.first().unwrap(or: PYError.unknown)
+            .and(count).map({ return $0.0 }) // Ensure error gets propegated properly
+        
+    }
 }

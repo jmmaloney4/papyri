@@ -22,6 +22,16 @@ struct Version: SQLiteModel, Migration, Parameter {
     var blob: Blob.ID
     var previous: Version.ID?
     var date: Date
+    
+    static func createWith(blob: Blob, name: String, on db: DatabaseConnectable) -> Future<Version> {
+        return Version(id: nil, name: name, blob: blob.id!, previous: nil, date: Date())
+            .save(on: db)
+    }
+    
+    func createSubsequentVersion(blob: Blob, name: String? = nil, on db: DatabaseConnectable) -> Future<Version> {
+        return Version(id: nil, name: name ?? self.name, blob: blob.id!, previous: self.id!, date: Date())
+            .save(on: db)
+    }
 }
 
 struct CodableDateWrapper: Codable {

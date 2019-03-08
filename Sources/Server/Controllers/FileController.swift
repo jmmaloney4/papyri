@@ -32,21 +32,17 @@ public struct FileController {
         return try req.content.decode(CreateFileStruct.self)
             .flatMap({ body -> Future<Response> in
                 
-                return Blob
-                    .query(on: req)
-                    .filter(\.hash == body.blob)
-                    .first()
+                return Blob.find(hash: body.blob, on: req)
                     .flatMap({ blob -> Future<Response> in
                         
-                        return Version(id: nil, name: body.name, blob: blob!.id!, previous: nil, date: Date())
-                            .save(on: req)
+                        Version.createWith(blob: blob, name: body.name, on: req)
                             .flatMap({ ver -> Future<Response> in
                                 
-                                return File(id: nil, hash: blob!.hash, latest: ver.id!)
+                                return File(id: nil, hash: blob.hash, latest: ver.id!)
                                     .save(on: req)
                                     .flatMap { file -> Future<Response> in
                                         
-                                        return FileInfoStruct(name: body.name, hash: body.blob, size: try blob!.loadData().count)
+                                        return FileInfoStruct(name: body.name, hash: body.blob, size: try blob.loadData().count)
                                             .encode(status: HTTPStatus.created, for: req)
                                 }
                             })
@@ -60,45 +56,27 @@ public struct FileController {
         
         return try req.content.decode(UpdateFileStruct.self)
             .flatMap({ body -> EventLoopFuture<Response> in
-                
-                // Either get filename from previous revision, or use provided name.
-                var name: Future<String>
-                if body.name == nil {
-                    name = file.map({ $0?.latest }).flatMap {
-                        Version.find($0!, on: req).map {
-                            return $0!.name
-                        }
-                    }
-                } else {
-                    let promise = req.eventLoop.newPromise(of: String.self)
-                    promise.succeed(result: body.name!)
-                    name = promise.futureResult
-                }
-                
                 // Find the blob
-                return Blob
-                    .query(on: req)
-                    .filter(\.hash == body.blob)
-                    .first()
-                    
-                    // Create a new Version
-                    .and(name)
+                return Blob.find(hash: body.blob, on: req)
                     .and(file)
-                    .flatMap({ (arg0, file) -> EventLoopFuture<Response> in
-                        let (blob, name) = arg0
+                    .flatMap({ (arg) -> EventLoopFuture<Response> in
+                        let (blob, file) = arg
                         
-                        return Version(id: nil, name: name, blob: blob!.id!, previous: file!.latest, date: Date())
-                            .save(on: req)
-                            .flatMap({ ver -> Future<Response> in
-                                
+                        return file.map({ $0.latest }).flatMap {
+                            Version.find($0, on: req).flatMap {
+                                $0!.createSubsequentVersion(blob: blob, name: body.name, on: req)
+                            }
+                        }
+                        .unsafelyUnwrapped
+                        .flatMap({ ver -> Future<Response> in
                                 // Save the new file
                                 var newFile = file!
                                 newFile.latest = ver.id!
                                 return newFile.update(on: req).flatMap({ _ in
-                                    FileInfoStruct(name: ver.name, hash: newFile.hash, size: try blob!.loadData().count)
+                                    FileInfoStruct(name: ver.name, hash: newFile.hash, size: try blob.loadData().count)
                                         .encode(status: HTTPStatus.ok, for: req)
                                 })
-                            })
+                        })
                     })
             })
     }

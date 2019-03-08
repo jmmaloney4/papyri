@@ -41,7 +41,6 @@ public struct CreateFileStruct: Content {
     }
 }
 
-
 public struct UpdateFileStruct: Content {
     public var name: String?
     public var blob: SHA256
