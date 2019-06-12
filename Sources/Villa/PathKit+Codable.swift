@@ -17,6 +17,6 @@ extension Path: Codable {
     
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
-        try container.encode(self.normalize().path)
+        try container.encode(self.normalize().string)
     }
 }
