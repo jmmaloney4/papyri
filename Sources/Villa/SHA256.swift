@@ -7,7 +7,7 @@
 import Foundation
 import CryptoSwift
 
-public struct SHA256: Codable, CustomStringConvertible, Equatable {
+public struct SHA256: Codable, CustomStringConvertible, Hashable {
     public fileprivate(set) var bytes: [UInt8]
     
     public init(withData data: Data) {
