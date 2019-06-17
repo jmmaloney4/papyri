@@ -1,9 +1,8 @@
+// Copyright © 2019 Jack Maloney. All Rights Reserved.
 //
-//  PathKit+Codable.swift
-//  Villa
-//
-//  Created by Jack Maloney on 6/11/19.
-//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import Foundation
 import PathKit

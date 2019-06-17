@@ -3,4 +3,4 @@ import SwiftCLI
 
 print("Hello, World!")
 
-try! Villa()
+print(Villa.shared)

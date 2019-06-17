@@ -1,94 +1,21 @@
+// Copyright © 2019 Jack Maloney. All Rights Reserved.
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 import Foundation
 import PathKit
 
-enum FileType: String, Codable {
-    typealias RawValue = String
-    
-    case plain = "text/plain"
-    case pdf = "application/pdf"
-    case markdown = "text/markdown"
-    
-    static var extensions: [FileType:[String]] = [
-        .plain: [".txt"],
-        .pdf: [".pdf"],
-        .markdown: [".md"]
-    ]
-    
-    static func forExtension(_ ext: String) -> FileType? {
-        for (type, exts) in extensions {
-            if exts.contains(ext) {
-                return type
-            }
-        }
-        return nil
-    }
-}
-
-struct Branch: Codable, Hashable {
-    var id: SHA256
-    var name: String
-    var head: SHA256
-    
-    static func == (lhs: Branch, rhs: Branch) -> Bool {
-        return lhs.id == rhs.id
-    }
-    
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(self.id)
-    }
-}
-
-struct Tag: Codable, Hashable {
-    var id: SHA256
-    var name: String
-    var commit: SHA256
-}
-
-struct IndexFile: Codable {
-    var id: SHA256
-    var fileName: String
-    var dateAdded: Date
-    var fileType: FileType
-    var branches: [Branch:SHA256]
-    var tags: [Tag:SHA256]
-    
-    init(fileName name: String) {
-        self.fileName = name
-        self.dateAdded = Date()
-        self.fileType = FileType.forExtension(Path(name).extension ?? "") ?? .plain
-        self.branches = [:]
-        self.tags = [:]
-        self.id = SHA256(withData: "\(self.fileName)\(self.dateAdded)".data(using: .utf8)!)
-    }
-}
-
-struct Blob: Codable {
-    var id: SHA256
-    var data: Data
-    
-    
-}
-
 public class Villa {
-    public struct Paths {
-        public static let config = Path.home + Path(".villa/config")
-        public static let index = Path("index")
-    }
-    
-    struct VillaConfig: Codable {
-        var database: Path
-        
-        var indexPath: Path {
-            return (self.database + Paths.index).normalize()
-        }
-    }
-    
-    var config: VillaConfig
+    private var config: Config
     private var index: [SHA256] = []
     
-    public init() throws {
+    public static var shared: Villa = try! Villa()
+    
+    init() throws {
         let decoder = JSONDecoder()
-        self.config = try decoder.decode(VillaConfig.self, from: try! Paths.config.read())
+        self.config = try decoder.decode(Config.self, from: try! Paths.config.read())
         self.config.database = self.config.database.normalize().absolute()
         
         if !self.config.indexPath.exists {
@@ -107,12 +34,33 @@ public class Villa {
             .write(to: URL(fileURLWithPath: config.indexPath.string), atomically: true, encoding: .utf8)
     }
     
-    func newFile(data: Data, name: String) throws {
-        let index = IndexFile(fileName: name)
-        self.index.append(index.id)
+    func newFile(data: Data, name: String) throws -> File {
+        var file = try File(name: name)
+        self.index.append(file.id)
         try self.writeIndex()
         
+        let blob = try Blob(withData: data)
+        try blob.write(toDB: self.config.database)
         
+        let commit = Commit(message: "Initial Commit")
+        let branch = Branch(name: "master", file: file.id, commit: commit)
+        file.addBranch(branch)
+        
+        return file
     }
 }
 
+fileprivate extension Villa {
+    struct Paths {
+        public static let config = Path.home + Path(".villa/config")
+        public static let index = Path("index")
+    }
+    
+    struct Config: Codable {
+        var database: Path
+        
+        var indexPath: Path {
+            return (self.database + Paths.index).normalize()
+        }
+    }
+}

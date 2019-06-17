@@ -25,11 +25,7 @@ public struct SHA256: Codable, CustomStringConvertible, Hashable {
         let container = try decoder.singleValueContainer()
         let str = try container.decode(String.self)
         if str.count != 64 {
-            // Fluent needs to init an empty thing. Its dumb.
-            // Not sure why this happens or where it is documented.
-            // print(str)
-            self.init(withData: Data())
-            return
+            fatalError("Couldn't decode SHA256 hex: \(str)")
         }
         try self.init(withHex: str)
     }
