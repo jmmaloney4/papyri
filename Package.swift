@@ -10,10 +10,11 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", from: "1.0.0"),
         .package(url: "https://github.com/kylef/PathKit.git", from: "1.0.0"),
-        .package(url: "https://github.com/jakeheis/SwiftCLI.git", from: "5.3.0")
+        .package(url: "https://github.com/jakeheis/SwiftCLI.git", from: "5.3.0"),
+        .package(url: "https://github.com/scottrhoyt/SwiftyTextTable.git", from: "0.5.0")
     ],
     targets: [
-        .target(name: "Papyri", dependencies: ["Villa", "SwiftCLI"], path: "Sources/papyri/"),
+        .target(name: "Papyri", dependencies: ["Villa", "SwiftCLI", "SwiftyTextTable", "PathKit"], path: "Sources/papyri/"),
         .target(name: "Villa", dependencies:  ["CryptoSwift", "PathKit"], path: "Sources/Villa/")
     ]
 )

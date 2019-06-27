@@ -7,11 +7,11 @@
 import Foundation
 import CryptoSwift
 
-public struct SHA256: Codable, CustomStringConvertible, Hashable {
+public struct Hash: Codable, CustomStringConvertible, Hashable {
     public fileprivate(set) var bytes: [UInt8]
     
     public init(withData data: Data) {
-        self.bytes = data.sha256().bytes
+        self.bytes = data.sha3(.sha256).bytes
     }
     
     public init(withHex hex: String) throws {
@@ -25,7 +25,7 @@ public struct SHA256: Codable, CustomStringConvertible, Hashable {
         let container = try decoder.singleValueContainer()
         let str = try container.decode(String.self)
         if str.count != 64 {
-            fatalError("Couldn't decode SHA256 hex: \(str)")
+            fatalError("Couldn't decode SHA3-256 hex: \(str)")
         }
         try self.init(withHex: str)
     }

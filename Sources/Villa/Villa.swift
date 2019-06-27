@@ -9,7 +9,7 @@ import PathKit
 
 public class Villa {
     private var config: Config
-    private var index: [SHA256] = []
+    private var index: [Hash] = []
     
     public static var shared: Villa = try! Villa()
     
@@ -23,7 +23,7 @@ public class Villa {
         } else {
             let indexFile: String = try self.config.indexPath.read()
             for line in indexFile.split(separator: "\n") {
-                self.index.append(try SHA256(withHex: String(line)))
+                self.index.append(try Hash(withHex: String(line)))
             }
         }
     }
@@ -34,7 +34,7 @@ public class Villa {
             .write(to: URL(fileURLWithPath: config.indexPath.string), atomically: true, encoding: .utf8)
     }
     
-    func newFile(data: Data, name: String) throws -> File {
+    public func newFile(data: Data, name: String) throws -> File {
         var file = try File(name: name)
         self.index.append(file.id)
         try self.writeIndex()
@@ -47,6 +47,14 @@ public class Villa {
         file.addBranch(branch)
         
         return file
+    }
+    
+    public func allFiles() throws -> [File] {
+        var rv: [File] = []
+        for hash in index {
+            rv.append(try File(withId: hash, atDB: config.database))
+        }
+        return rv
     }
 }
 
@@ -62,5 +70,11 @@ fileprivate extension Villa {
         var indexPath: Path {
             return (self.database + Paths.index).normalize()
         }
+    }
+}
+
+extension Path {
+    var url: URL {
+        return URL(fileURLWithPath: self.string)
     }
 }

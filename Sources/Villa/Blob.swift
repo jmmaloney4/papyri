@@ -8,9 +8,9 @@ import Foundation
 import PathKit
 
 protocol Object: Codable {
-    var id: SHA256 { get }
+    var id: Hash { get }
     
-    init(withId id: SHA256, atDB dbPath: Path) throws
+    init(withId id: Hash, atDB dbPath: Path) throws
     func write(toDB dbPath: Path) throws
 }
 
@@ -21,16 +21,27 @@ extension Object {
         try path.write(data)
     }
     
-    init(withId id: SHA256, atDB dbPath: Path) throws {
+    init(withId id: Hash, atDB dbPath: Path) throws {
         let path = dbPath + id.dbPath()
         self = try JSONDecoder().decode(Self.self, from: try path.read())
         guard self.id == id else {
             fatalError("Given id and saved id do not agree.")
         }
     }
+    
+    func createDBDir(atDB dbPath: Path) throws {
+        let prefix = dbPath + self.id.dbPrefix()
+        
+        if !prefix.exists {
+            try prefix.mkpath()
+        } else if !prefix.isDirectory {
+            try prefix.delete()
+            try prefix.mkpath()
+        }
+    }
 }
 
-protocol ImmutableObject {
+protocol ImmutableObject: Object {
     
 }
 
@@ -38,10 +49,14 @@ extension ImmutableObject {
     
 }
 
+protocol MutableObject: Object {
+    
+}
+
 // Object with cryptographic hash guarantee, used for storage of actual file data and commits.
 // Data is immutable because of hashing.
-struct Blob: Object, Codable {
-    var id: SHA256
+struct Blob: ImmutableObject, Codable {
+    var id: Hash
     var data: Data
     var salt: [UInt8]
     
@@ -54,10 +69,10 @@ struct Blob: Object, Codable {
         var hashData = Data()
         hashData.append(contentsOf: self.salt)
         hashData.append(self.data)
-        self.id = SHA256(withData: hashData)
+        self.id = Hash(withData: hashData)
     }
     
-    init(withId id: SHA256, atDB dbPath: Path) throws {
+    init(withId id: Hash, atDB dbPath: Path) throws {
         self.id = id
         
         let path = dbPath + self.id.dbPath()
@@ -65,7 +80,7 @@ struct Blob: Object, Codable {
         self.salt = data.prefix(upTo: Blob.RandomBytesSaltCount).bytes
         self.data = data.suffix(from: Blob.RandomBytesSaltCount)
         
-        let sha = SHA256(withData: data)
+        let sha = Hash(withData: data)
         guard self.id == sha else {
             fatalError("Corrupted file, expected \(self.id), got \(sha)")
         }
@@ -73,13 +88,16 @@ struct Blob: Object, Codable {
     
     func write(toDB dbPath: Path) throws {
         let path = dbPath + self.id.dbPath()
+        print(path)
         var data = Data()
         data.append(contentsOf: self.salt)
         data.append(self.data)
         
-        guard self.id == SHA256(withData: data) else {
-            fatalError("Refusing to write incorrect data, expected \(self.id), got \(SHA256(withData: data))")
+        guard self.id == Hash(withData: data) else {
+            fatalError("Refusing to write incorrect data, expected \(self.id), got \(Hash(withData: data))")
         }
+        
+        try self.createDBDir(atDB: dbPath)
         
         try path.write(data)
     }
@@ -113,7 +131,7 @@ class MutableObject: Object, Codable, Equatable {
 }
 */
 
-fileprivate extension SHA256 {
+fileprivate extension Hash {
     func dbPath() -> Path {
         let hex = self.hex
         let splitIndex = hex.index(hex.startIndex, offsetBy: 2)

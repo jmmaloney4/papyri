@@ -8,7 +8,18 @@
 import Foundation
 
 struct Group: Object {
-    var id: SHA256
-    var files: [SHA256]
+    var id: Hash
+    var files: [Hash]
 }
 
+protocol Object {
+    
+}
+
+protocol MetadataObject: Object {
+    
+}
+
+protocol Blob {
+    
+}

@@ -7,9 +7,9 @@
 import Foundation
 import PathKit
 
-struct File: Codable, Object {    
-    var id: SHA256
-    var name: String
+public struct File: Codable, Object {    
+    public var id: Hash
+    public var name: String
     var dateAdded: Date
     var fileType: FileType
     var branches: [Branch]
@@ -26,7 +26,7 @@ struct File: Codable, Object {
         var hashData = Data()
         hashData.append(contentsOf: rand)
         hashData.append(self.name.data(using: .utf8)!)
-        self.id = SHA256(withData: hashData)
+        self.id = Hash(withData: hashData)
     }
     
     mutating func addBranch(_ branch: Branch) {
@@ -35,12 +35,12 @@ struct File: Codable, Object {
 }
 
 struct Branch: Object, Codable, Hashable {
-    var id: SHA256
+    var id: Hash
     var name: String
-    var file: SHA256
-    var head: SHA256
+    var file: Hash
+    var head: Hash
     
-    init(name: String, file: SHA256, commit: Commit) {
+    init(name: String, file: Hash, commit: Commit) {
         self.name = name
         self.file = file
         self.head = commit.id
@@ -48,24 +48,24 @@ struct Branch: Object, Codable, Hashable {
         var data = Data()
         data.append(self.name.data(using: .utf8)!)
         data.append(contentsOf: self.file.bytes)
-        self.id = SHA256(withData: data)
+        self.id = Hash(withData: data)
     }
 }
 
 struct Tag: Object, Codable, Hashable {
-    var id: SHA256
+    var id: Hash
     var name: String
-    var commit: SHA256
+    var commit: Hash
 }
 
-struct Commit: Codable, Hashable {
-    var id: SHA256!
+struct Commit: Object, Codable, Hashable {
+    var id: Hash
     var message: String
     
     struct File: Codable, Hashable {
-        var file: SHA256 // Index
-        var parent: SHA256? // Parent Commit, in context of this file. nil if root commit.
-        var blob: SHA256 // Blob committed in this commit, for this file.
+        var file: Hash // Index
+        var parent: Hash? // Parent Commit, in context of this file. nil if root commit.
+        var blob: Hash // Blob committed in this commit, for this file.
     }
     
     var files: [File] = []
@@ -79,7 +79,7 @@ struct Commit: Codable, Hashable {
         self.message = message
     }
     
-    mutating func addFile(file: SHA256, parent: SHA256?, blob: SHA256) {
+    mutating func addFile(file: Hash, parent: Hash?, blob: Hash) {
         files.append(File(file: file, parent: parent, blob: blob))
     }
 }
