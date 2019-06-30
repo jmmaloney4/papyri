@@ -15,7 +15,7 @@ public struct Hash: Codable, CustomStringConvertible, Hashable {
     }
     
     public init(withHex hex: String) throws {
-        self.bytes = hex.hexa2Bytes
+        self.bytes = hex.bytes
         guard self.bytes.count == 32 else {
             fatalError()
         }
@@ -41,12 +41,4 @@ public struct Hash: Codable, CustomStringConvertible, Hashable {
     public var description: String { return self.hex }
 }
 
-fileprivate extension StringProtocol {
-    var hexa2Bytes: [UInt8] {
-        guard self.count > 2 else {
-            return []
-        }
-        let hexa = Array(self)
-        return stride(from: 0, to: count, by: 2).compactMap { UInt8(String(hexa[$0...$0.advanced(by: 1)]), radix: 16) }
-    }
-}
+

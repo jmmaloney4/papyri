@@ -9,7 +9,7 @@ import SwiftCLI
 import PathKit
 import Villa
 import SwiftyTextTable
-
+/*
 class ImportCommand: Command {
     var name: String = "import"
     let paths = CollectedParameter()
@@ -36,3 +36,4 @@ class ImportCommand: Command {
         print(table.render())
     }
 }
+*/

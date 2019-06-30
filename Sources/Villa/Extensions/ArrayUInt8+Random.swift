@@ -21,3 +21,22 @@ internal extension Array where Element == UInt8 {
         self = data.bytes
     }
 }
+/*
+internal extension StringProtocol {
+    func hexa2Bytes() throws -> [UInt8]  {
+        if self.hasPrefix("0x") {
+            return try self.suffix(from: self.index(self.startIndex, offsetBy: 2)).hexa2Bytes()
+        }
+        
+        if !self.allSatisfy({ "0123456789abcdefABCDEF".contains($0) }) {
+            fatalError()
+        }
+        
+        guard self.count > 2 else {
+            return []
+        }
+        let hexa = Array(self)
+        return stride(from: 0, to: count, by: 2).compactMap { UInt8(String(hexa[$0...$0.advanced(by: 1)]), radix: 16) }
+    }
+}
+*/

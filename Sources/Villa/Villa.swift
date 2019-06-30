@@ -6,18 +6,28 @@
 
 import Foundation
 import PathKit
+import Yams
+import CryptoSwift
 
 public class Villa {
     private var config: Config
     private var index: [Hash] = []
+    public var keys: [AESKey] = []
     
     public static var shared: Villa = try! Villa()
     
     init() throws {
-        let decoder = JSONDecoder()
-        self.config = try decoder.decode(Config.self, from: try! Paths.config.read())
-        self.config.database = self.config.database.normalize().absolute()
+        self.config = try Config.load()
         
+        // Decode keys.json file
+        if config.keysFilePath.exists {
+            let jsonDecoder = JSONDecoder()
+            self.keys = try jsonDecoder.decode([AESKey].self, from: try config.keysFilePath.read())
+        } else {
+            self.keys = []
+        }
+        
+        // Decode index file
         if !self.config.indexPath.exists {
             try self.config.indexPath.write("")
         } else {
@@ -28,53 +38,52 @@ public class Villa {
         }
     }
     
+    func updateKeysFile() throws {
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(self.keys)
+        try self.config.keysFilePath.write(data)
+    }
+    
+    public func generateNewKey(name: String, variant: AES.Variant = .aes128, password: String) throws -> AESKey {
+        let key = try AESKey.generate(name: name, variant: variant, password: password)
+        self.keys.append(key)
+        try self.updateKeysFile()
+        return key
+    }
+    
     func writeIndex() throws {
         try index.map({ $0.hex })
             .joined(separator: "\n")
             .write(to: URL(fileURLWithPath: config.indexPath.string), atomically: true, encoding: .utf8)
     }
-    
-    public func newFile(data: Data, name: String) throws -> File {
-        var file = try File(name: name)
-        self.index.append(file.id)
-        try self.writeIndex()
+
+    func saveData(_ data: Data) throws  {
         
-        let blob = try Blob(withData: data)
-        try blob.write(toDB: self.config.database)
-        
-        let commit = Commit(message: "Initial Commit")
-        let branch = Branch(name: "master", file: file.id, commit: commit)
-        file.addBranch(branch)
-        
-        return file
-    }
-    
-    public func allFiles() throws -> [File] {
-        var rv: [File] = []
-        for hash in index {
-            rv.append(try File(withId: hash, atDB: config.database))
-        }
-        return rv
     }
 }
 
 fileprivate extension Villa {
     struct Paths {
-        public static let config = Path.home + Path(".villa/config")
+        public static let config = Path.home + Path(".villa/config.yml")
         public static let index = Path("index")
+        public static let keys = Path("keys.json")
     }
     
     struct Config: Codable {
         var database: Path
         
-        var indexPath: Path {
-            return (self.database + Paths.index).normalize()
+        /// Where the file index file is stored
+        var indexPath: Path { return (self.database + Paths.index).normalize() }
+        
+        /// Where the encryption keys are stored
+        var keysFilePath: Path { return (self.database + Paths.keys).normalize() }
+        
+        static func load() throws -> Config {
+            let ymlDecoder = YAMLDecoder()
+            var config = try ymlDecoder.decode(Config.self, from: try Paths.config.read())
+            config.database = config.database.normalize().absolute()
+            
+            return config
         }
-    }
-}
-
-extension Path {
-    var url: URL {
-        return URL(fileURLWithPath: self.string)
     }
 }

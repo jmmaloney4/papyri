@@ -8,6 +8,5 @@ import Villa
 import SwiftCLI
 
 let papyri = CLI(name: "papyri")
-papyri.commands = [ImportCommand(), ListCommand()]
+papyri.commands = [KeyCommands()]
 papyri.goAndExit()
-

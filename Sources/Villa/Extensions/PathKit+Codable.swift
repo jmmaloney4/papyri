@@ -19,3 +19,9 @@ extension Path: Codable {
         try container.encode(self.normalize().string)
     }
 }
+
+extension Path {
+    var url: URL {
+        return URL(fileURLWithPath: self.string)
+    }
+}
