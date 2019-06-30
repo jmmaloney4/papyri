@@ -51,6 +51,21 @@ public class Villa {
         return key
     }
     
+    // TODO: Refactor with KeyPaths?
+    public func getKeyWithName(_ name: String) -> AESKey? {
+        let matching = self.keys.filter({ $0.name == name })
+        if matching.count > 1 { fatalError() }
+        if matching.count == 1 { return matching[0] }
+        else { return nil }
+    }
+    
+    public func getKeyWithShortHash(_ hash: String) -> AESKey? {
+        let matching = self.keys.filter({ $0.shortHash == hash })
+        if matching.count > 1 { fatalError() }
+        if matching.count == 1 { return matching[0] }
+        else { return nil }
+    }
+    
     func writeIndex() throws {
         try index.map({ $0.hex })
             .joined(separator: "\n")

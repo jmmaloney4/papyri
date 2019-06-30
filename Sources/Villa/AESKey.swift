@@ -10,19 +10,25 @@ import CryptoSwift
 
 public struct AESKey: Codable {
     /// Name of this key
-    var name: String
+    public var name: String
     /// Variant of AES this key is for [128, 192, 256]
-    var variant: AES.Variant
+    public var variant: AES.Variant
     /// Salt used in PBKDF2
-    var salt: [UInt8]
+    public var salt: [UInt8]
     /// First half of PBKDF2 key used to verify password correctness and NOTHING ELSE
-    var validate: [UInt8]
+    public var validate: [UInt8]
     /// IV used to encrypt the primary key with the second half of the PBKDF2 key
-    var nonce: [UInt8]
+    public var nonce: [UInt8]
     /// Encrypted bytes of the primary key
-    var bytes: [UInt8]
+    public var bytes: [UInt8]
     /// If the key is decrypted it is stored here, NEVER ON DISK
-    var decrypted: [UInt8]? = nil
+    public var decrypted: [UInt8]? = nil
+
+    /// 32 Bytes. Size of SHA256 used in PBKDF2.
+    private static var saltLen = 32
+    
+    /// 16 byte IV.
+    private static var nonceLen = 16
     
     enum CodingKeys: CodingKey {
         case name
@@ -50,7 +56,9 @@ public struct AESKey: Codable {
         self.bytes = Array<UInt8>(hex: try values.decode(String.self, forKey: .key))
         self.validate = Array<UInt8>(hex: try values.decode(String.self, forKey: .validate))
         
-        guard self.bytes.count == self.validate.count else { fatalError() }
+        guard self.bytes.count == self.validate.count,
+            self.nonce.count == AESKey.nonceLen,
+            self.salt.count == AESKey.saltLen else { fatalError() }
         
         switch self.bytes.count {
         case AES.Variant.aes128.keySize: self.variant = .aes128
@@ -80,27 +88,51 @@ public struct AESKey: Codable {
     /// Generate a new AES Key.
     internal static func generate(name: String, variant: AES.Variant, password: String) throws -> AESKey {
         // https://security.stackexchange.com/a/38854
-        let keyLength = variant.keySize * 2
-        let salt = try Array<UInt8>(withRandomBytes: keyLength)
-        let pwbytes = Array<UInt8>(password.utf8)
+        let salt = try Array<UInt8>(withRandomBytes: AESKey.saltLen)
         
-        let pwkey = try PKCS5.PBKDF2(password: pwbytes, salt: salt, iterations: 4096, keyLength: keyLength, variant: .sha256).calculate()
+        let (encrypt, validate) = try AESKey.pbkdf2ToKeys(password: password, salt: salt, variant: variant)
         
-        let validate = Array<UInt8>(pwkey[..<variant.keySize])          // k3
-        let encrypt = Array<UInt8>(pwkey[variant.keySize...])           // k2
-        
-        let nonce = try Array<UInt8>(withRandomBytes: variant.keySize)  // iv
+        let nonce = try Array<UInt8>(withRandomBytes: AESKey.nonceLen)  // iv
         let key = try Array<UInt8>(withRandomBytes: variant.keySize)    // k1
         
         // https://security.stackexchange.com/a/52674
-        let aes = try AES(key: encrypt, blockMode: CBC(iv: nonce), padding: .noPadding)
+        let aes = try AES(key: encrypt, blockMode: CTR(iv: nonce), padding: .noPadding)
         let encryptedKey = try aes.encrypt(key)
         
-        return AESKey(name: name, variant: .aes128, salt: salt, validate: validate, nonce: nonce, encrypted: encryptedKey)
+        return AESKey(name: name, variant: variant, salt: salt, validate: validate, nonce: nonce, encrypted: encryptedKey)
     }
     
-    public func attemptDecryption(withPassword password: String) throws -> Bool {
-        return false
+    /// Use PBKDF2 to generate key to encrypt/decrypt primary key, and to verify password.
+    /// **Returns (encrypt/decrypt, validate).**
+    private static func pbkdf2ToKeys(password: String, salt: [UInt8], variant: AES.Variant) throws -> ([UInt8], [UInt8]) {
+        // https://security.stackexchange.com/a/38854
+        let pwbytes = Array<UInt8>(password.utf8)
+        let key = try PKCS5.PBKDF2(password: pwbytes,
+                                   salt: salt,
+                                   iterations: 4096,
+                                   keyLength: variant.keySize * 2, // Need two keys from this, so twice as long.
+                                   variant: .sha256).calculate()
+
+        let encrypt = Array<UInt8>(key[variant.keySize...])   // k2
+        let validate = Array<UInt8>(key[..<variant.keySize])  // k3
+        
+        return (encrypt, validate)
+    }
+    
+    public mutating func attemptDecryption(withPassword password: String) throws -> Bool {
+        // https://security.stackexchange.com/a/38854
+        let (decrypt, validate) = try AESKey.pbkdf2ToKeys(password: password, salt: self.salt, variant: self.variant)
+        
+        guard validate == self.validate else {
+            // Passwords don't match.
+            return false
+        }
+        
+        // Passwords match, decrypt.
+        let aes = try AES(key: decrypt, blockMode: CTR(iv: nonce), padding: .pkcs7)
+        self.decrypted = try aes.decrypt(self.bytes)
+        
+        return true
     }
     
     public var shortHash: String {
