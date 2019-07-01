@@ -1,34 +1,36 @@
+// Copyright © 2019 Jack Maloney. All Rights Reserved.
 //
-//  AESKey.swift
-//  CYaml
-//
-//  Created by Jack Maloney on 6/29/19.
-//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import Foundation
 import CryptoSwift
 
-public struct AESKey: Codable {
+// Comparison of Cipher Modes - https://security.stackexchange.com/a/52674
+// Password to Key Strategy - https://security.stackexchange.com/a/38854
+
+public class AESKey: Codable {
     /// Name of this key
     public var name: String
     /// Variant of AES this key is for [128, 192, 256]
-    public var variant: AES.Variant
+    public private(set) var variant: AES.Variant
     /// Salt used in PBKDF2
-    public var salt: [UInt8]
+    public private(set) var salt: [UInt8]
     /// First half of PBKDF2 key used to verify password correctness and NOTHING ELSE
-    public var validate: [UInt8]
+    public private(set) var validate: [UInt8]
     /// IV used to encrypt the primary key with the second half of the PBKDF2 key
-    public var nonce: [UInt8]
+    public private(set) var nonce: [UInt8]
     /// Encrypted bytes of the primary key
-    public var bytes: [UInt8]
+    public private(set) var bytes: [UInt8]
     /// If the key is decrypted it is stored here, NEVER ON DISK
-    public var decrypted: [UInt8]? = nil
+    public private(set) var decrypted: [UInt8]? = nil
 
     /// 32 Bytes. Size of SHA256 used in PBKDF2.
-    private static var saltLen = 32
+    private static var saltLength = 32
     
     /// 16 byte IV.
-    private static var nonceLen = 16
+    private static var nonceLength = 16
     
     enum CodingKeys: CodingKey {
         case name
@@ -39,16 +41,25 @@ public struct AESKey: Codable {
     }
     
     /// Used only in generate() method, which is the public interface for creating a new key.
-    private init(name: String, variant: AES.Variant, salt: [UInt8], validate: [UInt8], nonce: [UInt8], encrypted: [UInt8]) {
+    private init(name: String, variant: AES.Variant, salt: [UInt8], validate: [UInt8], nonce: [UInt8], encrypted: [UInt8], decrypted: [UInt8]? = nil) {
         self.name = name
         self.variant = variant
         self.salt = salt
         self.validate = validate
         self.nonce = nonce
         self.bytes = encrypted
+        self.decrypted = decrypted
     }
     
-    public init(from decoder: Decoder) throws {
+    private func validateInternalKeysizes() -> Bool {
+        return  self.bytes.count == self.variant.keySize &&
+                self.bytes.count == self.validate.count &&
+                self.nonce.count == AESKey.nonceLength &&
+                self.salt.count == AESKey.saltLength &&
+                (self.decrypted == nil || self.decrypted!.count == self.bytes.count)
+    }
+    
+    public required init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         self.name = try values.decode(String.self, forKey: .name)
         self.salt = Array<UInt8>(hex: try values.decode(String.self, forKey: .salt))
@@ -56,21 +67,18 @@ public struct AESKey: Codable {
         self.bytes = Array<UInt8>(hex: try values.decode(String.self, forKey: .key))
         self.validate = Array<UInt8>(hex: try values.decode(String.self, forKey: .validate))
         
-        guard self.bytes.count == self.validate.count,
-            self.nonce.count == AESKey.nonceLen,
-            self.salt.count == AESKey.saltLen else { fatalError() }
-        
         switch self.bytes.count {
         case AES.Variant.aes128.keySize: self.variant = .aes128
         case AES.Variant.aes192.keySize: self.variant = .aes192
         case AES.Variant.aes256.keySize: self.variant = .aes256
-        default: fatalError()
+        default: throw AESKeyError.invalidKeysize(self.bytes.count)
         }
+        
+        guard self.validateInternalKeysizes() else { throw AESKeyError.invalidEncodingError }
     }
     
     public func encode(to encoder: Encoder) throws {
-        guard self.bytes.count == self.variant.keySize,
-            self.validate.count == self.variant.keySize else {
+        guard self.validateInternalKeysizes() else {
                 print(self.validate)
                 print(self.bytes)
                 print(self.variant.keySize)
@@ -88,18 +96,18 @@ public struct AESKey: Codable {
     /// Generate a new AES Key.
     internal static func generate(name: String, variant: AES.Variant, password: String) throws -> AESKey {
         // https://security.stackexchange.com/a/38854
-        let salt = try Array<UInt8>(withRandomBytes: AESKey.saltLen)
+        let salt = try Array<UInt8>(withRandomBytes: AESKey.saltLength)
         
         let (encrypt, validate) = try AESKey.pbkdf2ToKeys(password: password, salt: salt, variant: variant)
         
-        let nonce = try Array<UInt8>(withRandomBytes: AESKey.nonceLen)  // iv
+        let nonce = try Array<UInt8>(withRandomBytes: AESKey.nonceLength)  // iv
         let key = try Array<UInt8>(withRandomBytes: variant.keySize)    // k1
         
         // https://security.stackexchange.com/a/52674
         let aes = try AES(key: encrypt, blockMode: CTR(iv: nonce), padding: .noPadding)
         let encryptedKey = try aes.encrypt(key)
         
-        return AESKey(name: name, variant: variant, salt: salt, validate: validate, nonce: nonce, encrypted: encryptedKey)
+        return AESKey(name: name, variant: variant, salt: salt, validate: validate, nonce: nonce, encrypted: encryptedKey, decrypted: key)
     }
     
     /// Use PBKDF2 to generate key to encrypt/decrypt primary key, and to verify password.
@@ -119,7 +127,7 @@ public struct AESKey: Codable {
         return (encrypt, validate)
     }
     
-    public mutating func attemptDecryption(withPassword password: String) throws -> Bool {
+    public func attemptDecryption(withPassword password: String) throws -> Bool {
         // https://security.stackexchange.com/a/38854
         let (decrypt, validate) = try AESKey.pbkdf2ToKeys(password: password, salt: self.salt, variant: self.variant)
         
@@ -129,10 +137,22 @@ public struct AESKey: Codable {
         }
         
         // Passwords match, decrypt.
-        let aes = try AES(key: decrypt, blockMode: CTR(iv: nonce), padding: .pkcs7)
+        let aes = try AES(key: decrypt, blockMode: CTR(iv: nonce), padding: .noPadding)
         self.decrypted = try aes.decrypt(self.bytes)
         
         return true
+    }
+    
+    func encrpytData(_ input: Data) throws -> (Data, [UInt8]) {
+        if self.decrypted == nil {
+            throw AESKeyError.keyEncryptedError
+        }
+        
+        let nonce = try Array<UInt8>(withRandomBytes: AESKey.nonceLength)
+        let aes = try AES(key: self.decrypted!, blockMode: CTR(iv: nonce), padding: .noPadding)
+        let data = try Data(aes.encrypt(input.bytes))
+        
+        return (data, nonce)
     }
     
     public var shortHash: String {
@@ -156,4 +176,17 @@ public extension AES.Variant {
         case .aes256: return "AES-256"
         }
     }
+}
+
+public extension AESKey {
+    enum AESKeyError: Error {
+        case invalidKeysize(Int)
+        case invalidEncodingError
+        case keyEncryptedError
+    }
+}
+
+struct EncryptedData {
+    var ciphertext: Data
+    var nonce: [UInt8]
 }

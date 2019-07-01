@@ -1,16 +1,15 @@
+// Copyright © 2019 Jack Maloney. All Rights Reserved.
 //
-//  Keys.swift
-//  CYaml
-//
-//  Created by Jack Maloney on 6/29/19.
-//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import Foundation
 import SwiftCLI
 import Villa
 import CryptoSwift
 import SwiftyTextTable
-
+/*
 class KeyCommands: CommandGroup {
     let name: String = "key"
     let shortDescription: String = "Deal with Encryption Keys."
@@ -87,7 +86,7 @@ class DumpKeyCommand: Command {
             exit(1)
         }
         
-        if var matched = Villa.shared.getKeyWithName(key.value) {
+        if let matched = Villa.shared.getKeyWithName(key.value) {
             let password = Input.readLine(prompt: "Enter a password for \(key.value): ", secure: true)
             if try matched.attemptDecryption(withPassword: password) {
                 print(matched.decrypted!.toHexString())
@@ -98,3 +97,4 @@ class DumpKeyCommand: Command {
         }
     }
 }
+*/
