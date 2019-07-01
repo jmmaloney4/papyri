@@ -10,6 +10,7 @@ import SwiftCLI
 import Villa
 import CryptoSwift
 import PathKit
+import SwiftyTextTable
 
 class VaultCommands: CommandGroup {
     let name: String = "vault"
@@ -22,7 +23,17 @@ class ListVaultsCommand: Command {
     var name: String = "list"
     
     func execute() throws {
-        let s = Villa.shared
+        let name = TextTableColumn(header: "Name")
+        let cipher = TextTableColumn(header: "Cipher")
+        let id = TextTableColumn(header: "Path")
+        
+        var table = TextTable(columns: [name, cipher, id])
+        
+        Villa.shared.vaults.forEach { vault in
+            table.addRow(values: [vault.name, vault.key.variant.name, vault.path])
+        }
+        
+        print(table.render())
     }
 }
 
@@ -45,7 +56,7 @@ class CreateVaultCommand: Command {
             }
         }
         
-        print("Creating a new Vault at '\(vaultPath)'.")
+        print("Creating a new Vault '\(vaultName.value)' at '\(vaultPath)'.")
         
         var variant: AES.Variant = .aes128
         if aes128.value {
@@ -73,6 +84,6 @@ class CreateVaultCommand: Command {
         }
         
         let vault = try Vault.createVault(atPath: vaultPath, withName: vaultName.value, andPassword: password!, variant: variant)
-        
+        Villa.shared.vaults.append(vault)
     }
 }

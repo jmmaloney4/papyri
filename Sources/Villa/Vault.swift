@@ -10,11 +10,11 @@ import Yams
 import CryptoSwift
 
 public class Vault: Codable {
-    var name: String
-    var path: Path
-    var key: AESKey
+    public var name: String
+    public private(set) var path: Path
+    public private(set) var key: AESKey
     // TODO: Make this a binary tree or something
-    var hashIndex: [HashIndexFile.Entry]?
+    var hashIndex: [HashIndexFile.Entry]? = nil
     
     var vaultFilePath: Path { return (self.path + Villa.Paths.vaultFile).normalize() }
     var keyFilePath: Path { return (self.path + Villa.Paths.keyFile).normalize() }
@@ -52,9 +52,17 @@ public class Vault: Codable {
         let key = try AESKey.generate(name: name, variant: variant, password: password)
         
         let rv =  Vault(name: name, path: path, key: key)
+        try rv.writeVaultFile()
         try rv.writeKeyFile()
         try rv.writeHashIndex()
         return rv
+    }
+    
+    private func writeVaultFile() throws {
+        let vaultFile = VaultFile(name: self.name)
+        let encoder = YAMLEncoder()
+        let data = try encoder.encode(vaultFile)
+        try self.vaultFilePath.write(data)
     }
     
     private func writeKeyFile() throws {

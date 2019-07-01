@@ -15,7 +15,7 @@ public struct Hash: Codable, CustomStringConvertible, Hashable {
     }
     
     public init(withHex hex: String) throws {
-        self.bytes = hex.bytes
+        self.bytes = Array<UInt8>(hex: hex)
         guard self.bytes.count == 32 else {
             fatalError()
         }

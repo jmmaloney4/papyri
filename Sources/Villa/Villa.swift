@@ -13,7 +13,9 @@ public class Villa {
     private var config: Config
     private var index: [Hash] = []
     public var keys: [AESKey] = []
-    public var vaults: [Vault]
+    public var vaults: [Vault] {
+        didSet { try! writeConfigFile() }
+    }
     
     public static var shared: Villa = try! Villa()
     
@@ -85,6 +87,13 @@ public class Villa {
     }
     */
     
+    private func writeConfigFile() throws {
+        self.config.vaults = self.vaults.map({ $0.path.abbreviate() })
+        let encoder = YAMLEncoder()
+        let data = try encoder.encode(self.config)
+        try Paths.config.write(data)
+    }
+    
     func saveData(_ input: Data, key: AESKey?) throws  {
         var data: Data
         var nonce: [UInt8]
@@ -98,13 +107,12 @@ public class Villa {
         }
         
         let fileData = Data("blob".utf8) + Data(nonce) + data
-        
     }
 }
 
 internal extension Villa {
     struct Paths {
-        public static let config = Path.home + Path(".villa/config.yml")
+        public static let config = Path("~/.villa/config.yml").normalize()
         public static let index = Path("index")
         public static let keyFile = Path("key.json")
         public static let vaultFile = Path("vault.yml")
