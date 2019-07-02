@@ -24,68 +24,12 @@ public class Villa {
         
         self.vaults = []
         for vault in config.vaults {
+            if self.vaults.contains(where: { $0.path == vault }) {
+                continue;
+            }
             self.vaults.append(try Vault(atPath: vault))
         }
-        
-        /*
-        // Decode keys.json file
-        if config.keysFilePath.exists {
-            let jsonDecoder = JSONDecoder()
-            let keysFile = try jsonDecoder.decode(KeysFile.self, from: try config.keysFilePath.read())
-            self.keys = keysFile.keys
-        } else {
-            self.keys = []
-        }
-        
-        // Decode index file
-        if !self.config.indexPath.exists {
-            try self.config.indexPath.write("")
-        } else {
-            let indexFile: String = try self.config.indexPath.read()
-            for line in indexFile.split(separator: "\n") {
-                self.index.append(try Hash(withHex: String(line)))
-            }
-        }
-        */
-        
     }
-    /*
-    func updateKeysFile() throws {
-        let encoder = JSONEncoder()
-        let keysFile = KeysFile(keys: self.keys)
-        let data = try encoder.encode(keysFile)
-        try self.config.keysFilePath.write(data)
-    }
- 
-    public func generateNewKey(name: String, variant: AES.Variant = .aes128, password: String) throws -> AESKey {
-        let key = try AESKey.generate(name: name, variant: variant, password: password)
-        self.keys.append(key)
-        try self.updateKeysFile()
-        return key
-    }
- 
- 
-    // TODO: Refactor with KeyPaths?
-    public func getKeyWithName(_ name: String) -> AESKey? {
-        let matching = self.keys.filter({ $0.name == name })
-        if matching.count > 1 { fatalError() }
-        if matching.count == 1 { return matching[0] }
-        else { return nil }
-    }
-    
-    public func getKeyWithShortHash(_ hash: String) -> AESKey? {
-        let matching = self.keys.filter({ $0.shortHash == hash })
-        if matching.count > 1 { fatalError() }
-        if matching.count == 1 { return matching[0] }
-        else { return nil }
-    }
- 
-    func writeIndex() throws {
-        try index.map({ $0.hex })
-            .joined(separator: "\n")
-            .write(to: URL(fileURLWithPath: config.indexPath.string), atomically: true, encoding: .utf8)
-    }
-    */
     
     private func writeConfigFile() throws {
         self.config.vaults = self.vaults.map({ $0.path.abbreviate() })
@@ -94,19 +38,11 @@ public class Villa {
         try Paths.config.write(data)
     }
     
-    func saveData(_ input: Data, key: AESKey?) throws  {
-        var data: Data
-        var nonce: [UInt8]
-        if key != nil {
-            // Encrypt
-            (data, nonce) = try key!.encrpytData(input)
-        } else {
-            // No Encryption
-            nonce = []
-            data = input
+    func addFile(_ data: Data, toVaults vaults: [Vault]) throws {
+        for vault in vaults {
+            let blob = try vault.saveData(data)
+            
         }
-        
-        let fileData = Data("blob".utf8) + Data(nonce) + data
     }
 }
 
@@ -117,6 +53,7 @@ internal extension Villa {
         public static let keyFile = Path("key.json")
         public static let vaultFile = Path("vault.yml")
         public static let hashIndexFile = Path("hash_index.json")
+        public static let dbDir = Path("db/")
     }
     
     struct KeysFile: Codable {
@@ -139,4 +76,24 @@ internal extension Villa {
             return config
         }
     }
+    
+    struct Branch {
+        var file: Hash
+        var name: String
+        var head: Hash
+    }
+    
+    struct FileMetadata {
+        var file: Hash? // nil if root commit
+        var filename: String
+        var branches: [Branch]
+    }
+    
+    struct Commit {
+        var file: Hash
+        var blob: Hash
+        var message: String
+        
+    }
 }
+

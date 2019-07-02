@@ -10,14 +10,14 @@ import CryptoSwift
 public struct Hash: Codable, CustomStringConvertible, Hashable {
     public fileprivate(set) var bytes: [UInt8]
     
-    public init(withData data: Data) {
+    public init(_ data: Data) {
         self.bytes = data.sha3(.sha256).bytes
     }
     
     public init(withHex hex: String) throws {
         self.bytes = Array<UInt8>(hex: hex)
         guard self.bytes.count == 32 else {
-            fatalError()
+            throw SHA3Error.invalidSize(self.bytes.count)
         }
     }
     
@@ -36,9 +36,16 @@ public struct Hash: Codable, CustomStringConvertible, Hashable {
     }
     
     public var hex: String {
-        return self.bytes.reduce(String(), { $0.appendingFormat("%02x", $1) })
+        return self.bytes.toHexString()
+        // return self.bytes.reduce(String(), { $0.appendingFormat("%02x", $1) })
     }
     public var description: String { return self.hex }
+}
+
+extension Hash {
+    enum SHA3Error: Error {
+        case invalidSize(Int)
+    }
 }
 
 

@@ -30,7 +30,7 @@ class ListVaultsCommand: Command {
         var table = TextTable(columns: [name, cipher, id])
         
         Villa.shared.vaults.forEach { vault in
-            table.addRow(values: [vault.name, vault.key.variant.name, vault.path])
+            table.addRow(values: [vault.name, vault.key?.variant.name ?? "No Encryption", vault.path])
         }
         
         print(table.render())
